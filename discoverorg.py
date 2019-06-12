@@ -9,6 +9,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.common.exceptions import ElementNotVisibleException
+from selenium.common.exceptions import ElementClickInterceptedException
+from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import TimeoutException
 
 #All the xpath used in the file.
 loginbutton = "//button[@id='SignIn']"
@@ -77,16 +80,22 @@ comnum = int(comnum)
 rnum = int(comnum//10)
 
 #Create a function to update the 10 companies in current page one by one.
+def cloudshow(cloud):
+    cloudbutton = driver.find_element_by_xpath(cloud)
+    driver.execute_script("return arguments[0].scrollIntoView(true);", cloudbutton)
+    cloudbt = WebDriverWait(driver,10).until(ec.visibility_of_element_located((By.XPATH,cloud)))
+    cloudbt = WebDriverWait(driver,20).until(ec.element_to_be_clickable((By.XPATH, cloud)))
+    return cloudbt
+
 def updaterecordbypage(pagenum):
-    #pagenum = driver.find_element_by_xpath("//li[@class='pagination-page ng-scope active']").text
-    #print(pagenum)
     for i in range(1,11):
         cloud = "/html[1]/body[1]/section[1]/section[1]/article[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[4]/div[1]/div[2]/div[1]/div[%i]/div[1]/div[1]/div[1]/div[1]/i[3]"%i
         rbody = WebDriverWait(driver,10).until(ec.visibility_of_element_located((By.XPATH,resultbody)))
-        cloudbutton = driver.find_element_by_xpath(cloud)
-        driver.execute_script("return arguments[0].scrollIntoView(true);", cloudbutton)
-        #cloudbt = WebDriverWait(driver,10).until(ec.visibility_of_element_located((By.XPATH,cloud)))
-        cloudbt = WebDriverWait(driver,20).until(ec.element_to_be_clickable((By.XPATH, cloud)))
+        try:
+            cloudbt = cloudshow(cloud)
+        except NoSuchElementException:
+            time.sleep(2)
+            cloudbt = cloudshow(cloud)
         try:
             cloudbt.click()
         except ElementClickInterceptedException:
@@ -120,30 +129,31 @@ def updaterecordbypage(pagenum):
         time.sleep(2)
     pagenum = driver.find_element_by_xpath("//li[@class='pagination-page ng-scope active']").text
     return comlist
-
+    
 #Turn to the next page and use the function to update companies in current page.
 for i in range(1,rnum):
-    newpage = WebDriverWait(driver,10).until(ec.visibility_of_element_located((By.XPATH,companybutton)))
-    uploadlist = updaterecordbypage(i)
-    time.sleep(5)
-    nextbutton = WebDriverWait(driver,10).until(ec.element_to_be_clickable((By.XPATH,nextpage)))
-    #nextbutton = driver.find_element_by_xpath(nextpage)
-    nextbutton.click()
-    pagenum = driver.find_element_by_xpath("//li[@class='pagination-page ng-scope active']").text
-    p = int(pagenum)
-    if p%10 == 0:
-        print("It is the %ith page"%p)
-    dis_next = nextbutton.get_attribute('disabled')
-    if dis_next is None:
-        is_clickable = True
-    else:
-        is_clickable = False
-    if is_clickable == False:
-        print("Last page")
-        break
-    time.sleep(2)
-    #print(uploadlist)
-    #print(p)
+    try: 
+        newpage = WebDriverWait(driver,10).until(ec.visibility_of_element_located((By.XPATH,companybutton)))
+        uploadlist = updaterecordbypage(i)
+        time.sleep(5)
+        nextbutton = WebDriverWait(driver,10).until(ec.element_to_be_clickable((By.XPATH,nextpage)))
+        #nextbutton = driver.find_element_by_xpath(nextpage)
+        nextbutton.click()
+        pagenum = driver.find_element_by_xpath("//li[@class='pagination-page ng-scope active']").text
+        p = int(pagenum)
+        if p%10 == 0:
+            print("It is the %ith page"%p)
+        dis_next = nextbutton.get_attribute('disabled')
+        if dis_next is None:
+            is_clickable = True
+        else:
+            is_clickable = False
+        if is_clickable == False:
+            print("Last page")
+            break
+        time.sleep(2)
+    except TimeoutException:
+        print(p)
 
 #Print out all the companies need a upload action. Check them manully.
 print(uploadlist)
